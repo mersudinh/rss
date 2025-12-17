@@ -29,4 +29,4 @@ WEBHOOK_URLS = [
 ]
 
 # --- Scheduler: how often to check feeds (in minutes) ---
-CHECK_INTERVAL_MINUTES = 1
+CHECK_INTERVAL_MINUTES = 60
