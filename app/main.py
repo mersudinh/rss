@@ -3,11 +3,11 @@ from app.config import RSS_FEEDS
 from app.rss_parser import fetch_and_parse_rss
 from app.webhook import send_to_webhook
 from app.db import init_db, get_last_guid, save_last_guid
+from app.scheduler import start_scheduler
 import os
 
 app = FastAPI()
 
-# Multiple webhook support: CSV in Railway ENV var
 WEBHOOK_URLS = os.getenv("WEBHOOK_URLS", "")
 WEBHOOK_URLS = [u.strip() for u in WEBHOOK_URLS.split(",") if u.strip()]
 
@@ -15,6 +15,7 @@ WEBHOOK_URLS = [u.strip() for u in WEBHOOK_URLS.split(",") if u.strip()]
 @app.on_event("startup")
 async def startup():
     await init_db()
+    start_scheduler()
 
 
 @app.get("/")
@@ -34,14 +35,12 @@ async def run_all_feeds():
             results.append({"feed": feed_url, "error": "feed empty or unreadable"})
             continue
 
-        # Newest → oldest check
         new_posts = []
         for post in posts:
             if last_guid and post["guid"] == last_guid:
                 break
             new_posts.append(post)
 
-        # Feed may be old→new; reverse ensures sending oldest new item first
         new_posts.reverse()
 
         sent_logs = []
@@ -54,7 +53,6 @@ async def run_all_feeds():
                     "sent": ok
                 })
 
-        # Save latest seen GUID
         latest_guid = posts[0]["guid"]
         await save_last_guid(feed_url, latest_guid)
 
