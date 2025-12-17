@@ -1,23 +1,15 @@
 import asyncpg
 import os
 
-# Railway internal connection variables
-PGHOST = os.getenv("PGHOST")
-PGPORT = os.getenv("PGPORT")
-PGUSER = os.getenv("PGUSER")
-PGPASSWORD = os.getenv("PGPASSWORD")
-PGDATABASE = os.getenv("PGDATABASE")
-
-DATABASE_URL = (
-    f"postgresql://{PGUSER}:{PGPASSWORD}@{PGHOST}:{PGPORT}/{PGDATABASE}"
-)
-
+DATABASE_URL = os.getenv("DATABASE_URL")
 conn = None
 
 async def init_db():
     global conn
-    conn = await asyncpg.connect(DATABASE_URL)
     print("DEBUG_DATABASE_URL =", DATABASE_URL, flush=True)
+
+    conn = await asyncpg.connect(DATABASE_URL)
+
     await conn.execute("""
         CREATE TABLE IF NOT EXISTS feed_state (
             feed_url TEXT PRIMARY KEY,
