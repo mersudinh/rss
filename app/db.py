@@ -1,37 +1,39 @@
 import asyncpg
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Railway internal connection variables
+PGHOST = os.getenv("PGHOST")
+PGPORT = os.getenv("PGPORT")
+PGUSER = os.getenv("PGUSER")
+PGPASSWORD = os.getenv("PGPASSWORD")
+PGDATABASE = os.getenv("PGDATABASE")
+
+DATABASE_URL = (
+    f"postgresql://{PGUSER}:{PGPASSWORD}@{PGHOST}:{PGPORT}/{PGDATABASE}"
+)
+
+conn = None
 
 async def init_db():
+    global conn
     conn = await asyncpg.connect(DATABASE_URL)
     await conn.execute("""
-        CREATE TABLE IF NOT EXISTS rss_tracker (
-            id SERIAL PRIMARY KEY,
-            feed_url TEXT UNIQUE NOT NULL,
+        CREATE TABLE IF NOT EXISTS feed_state (
+            feed_url TEXT PRIMARY KEY,
             last_guid TEXT
         )
     """)
-    await conn.close()
 
 async def get_last_guid(feed_url):
-    conn = await asyncpg.connect(DATABASE_URL)
     row = await conn.fetchrow(
-        "SELECT last_guid FROM rss_tracker WHERE feed_url=$1",
-        feed_url
+        "SELECT last_guid FROM feed_state WHERE feed_url=$1", feed_url
     )
-    await conn.close()
     return row["last_guid"] if row else None
 
 async def save_last_guid(feed_url, guid):
-    conn = await asyncpg.connect(DATABASE_URL)
-    await conn.execute(
-        """
-        INSERT INTO rss_tracker (feed_url, last_guid)
+    await conn.execute("""
+        INSERT INTO feed_state (feed_url, last_guid)
         VALUES ($1, $2)
         ON CONFLICT (feed_url)
-        DO UPDATE SET last_guid = $2
-        """,
-        feed_url, guid
-    )
-    await conn.close()
+        DO UPDATE SET last_guid = EXCLUDED.last_guid
+    """, feed_url, guid)
