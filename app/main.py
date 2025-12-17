@@ -7,7 +7,9 @@ import os
 
 app = FastAPI()
 
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+# Multiple webhook support: CSV in Railway ENV var
+WEBHOOK_URLS = os.getenv("WEBHOOK_URLS", "")
+WEBHOOK_URLS = [u.strip() for u in WEBHOOK_URLS.split(",") if u.strip()]
 
 
 @app.on_event("startup")
@@ -22,36 +24,44 @@ def root():
 
 @app.get("/run")
 async def run_all_feeds():
-    all_results = []
+    results = []
 
     for feed_url in RSS_FEEDS:
         last_guid = await get_last_guid(feed_url)
         posts = await fetch_and_parse_rss(feed_url)
 
         if not posts:
-            all_results.append({"feed": feed_url, "error": "no posts"})
+            results.append({"feed": feed_url, "error": "feed empty or unreadable"})
             continue
 
+        # Newest → oldest check
         new_posts = []
-        for p in posts:
-            if last_guid and p["guid"] == last_guid:
+        for post in posts:
+            if last_guid and post["guid"] == last_guid:
                 break
-            new_posts.append(p)
+            new_posts.append(post)
 
+        # Feed may be old→new; reverse ensures sending oldest new item first
         new_posts.reverse()
 
-        sent = []
-        for p in new_posts:
-            ok = await send_to_webhook(WEBHOOK_URL, p)
-            sent.append({"title": p["title"], "sent": ok})
+        sent_logs = []
+        for post in new_posts:
+            for hook in WEBHOOK_URLS:
+                ok = await send_to_webhook(hook, post)
+                sent_logs.append({
+                    "title": post["title"],
+                    "hook": hook,
+                    "sent": ok
+                })
 
+        # Save latest seen GUID
         latest_guid = posts[0]["guid"]
         await save_last_guid(feed_url, latest_guid)
 
-        all_results.append({
+        results.append({
             "feed": feed_url,
             "new_count": len(new_posts),
-            "sent": sent
+            "sent": sent_logs
         })
 
-    return all_results
+    return results
