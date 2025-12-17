@@ -17,6 +17,7 @@ conn = None
 async def init_db():
     global conn
     conn = await asyncpg.connect(DATABASE_URL)
+    print("DEBUG_DATABASE_URL =", DATABASE_URL, flush=True)
     await conn.execute("""
         CREATE TABLE IF NOT EXISTS feed_state (
             feed_url TEXT PRIMARY KEY,
