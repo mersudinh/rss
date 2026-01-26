@@ -50,9 +50,11 @@ async def send_to_webhook(url, item):
     async with aiohttp.ClientSession() as session:
         html = await _fetch_html(session, item.get("link", ""))
         content = _html_to_text(html) if html else ""
+        summary_html = item.get("summary") or ""
+        summary_text = _html_to_text(summary_html) if summary_html else ""
         payload = {
             "Title": item["title"],
-            "Summary": item["summary"],
+            "Summary": summary_text,
             "Link": item["link"],
             "Content": content,
         }
