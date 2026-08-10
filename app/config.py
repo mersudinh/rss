@@ -19,7 +19,8 @@ RSS_FEEDS = [
     "https://nwccu.org/feed/",
     "https://www.higheredcompliance.org/feed/",
     "https://nc-sara.org/feed/",
-    "https://upcea.edu/feed/"
+    "https://upcea.edu/feed/",
+    "https://rss.app/feeds/fOFf91iDPqFDbc3v.xml"
 ]
 
 # --- Where to POST new articles ---
